@@ -1,0 +1,19 @@
+<project default="build" basedir=".">
+	<target name="clean">
+    <delete dir="build"/>
+	</target>
+
+	<path id="master-classpath">
+		<pathelement location="cp/javax.json-1.0.jar" />
+		<pathelement location="java/lib/tools.jar" />
+		<pathelement location="build" />
+	</path>
+
+	<target name="build">
+		<mkdir dir="build" />
+		<javac srcdir="cp" destdir="build" debug="true" executable="java/bin/javac">
+			<classpath refid="master-classpath" />
+		</javac>
+	</target>
+</project>
+
