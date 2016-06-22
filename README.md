@@ -19,16 +19,17 @@ package was initially created from that package.
 Installation steps
 ------------------
 
+Lazy Approach:
+0. Run ./setup.sh
+
+Manual Approach:
 0. It is highly recommended to NOT put this directory anywhere accessible
     via http, just for sanity's sake.
 1. Get java. As of the time of writing, a suitable link for wget is:
-
-`wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u20-b26/jdk-8u20-linux-x64.tar.gz`
-
-(props to http://stackoverflow.com/questions/10268583)
-Extract java with gunzip and tar -xvf.
-Move jdk1.8.0_20 contents to "java"
-
+    `wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u20-b26/jdk-8u20-linux-x64.tar.gz`
+    (props to http://stackoverflow.com/questions/10268583)
+    Extract java with gunzip and tar -xvf.
+    Move jdk1.8.0_20 contents to "java"
 2. Run `ant build`
 
 Testing
