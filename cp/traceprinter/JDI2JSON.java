@@ -218,23 +218,13 @@ public class JDI2JSON {
 
     public static String[] builtin_packages = {"java", "javax", "sun", "com.sun", "traceprinter"};
 
-    public static String[] PU_stdlib = {"BinaryIn", "BinaryOut", "BinaryStdIn", "BinaryStdOut",
-                                  "Copy", "Draw", "DrawListener", "In", "InTest",
-                                  "Out", "Picture", "StdArrayIO", "StdAudio",
-                                        "StdDraw", "StdDraw3D", "StdIn", "StdInTest",
-                                        "StdOut", "StdRandom", "StdStats", "Stopwatch", "Stack", "Queue", "ST", "Point", "ST"};
-
     // input format: [package.]ClassName:lineno or [package.]ClassName
     public boolean in_builtin_package(String S) {
         S = S.split(":")[0];
-        for (String badPrefix: builtin_packages)
-            if (S.startsWith(badPrefix+"."))
+        for (String badPrefix : builtin_packages) {
+            if (S.startsWith(badPrefix+".")) {
                 return true;
-        for (String badClass: PU_stdlib) {
-            if (S.equals(badClass))
-                return true;
-            if (S.startsWith(badClass+"$"))
-                return true;
+            }
         }
         return false;
     }
@@ -723,36 +713,23 @@ public class JDI2JSON {
     }
 
     static JsonObject compileErrorOutput(String usercode, String errmsg, long row, long col) {
-	return output(usercode,
-	    Json.createArrayBuilder().add
-	    (Json.createObjectBuilder()
-	     .add("line", ""+row)
-	     .add("event", "uncaught_exception")
-	     .add("offset", ""+col)
-	     .add("exception_msg", errmsg))
-                      .build()
-                      );
-    }
-
-    static String fakify(String realcode) {
-	String[] x = realcode.split("\n", -1);
-	for (int i=0; i<x.length; i++) {
-	    int pos = x[i].indexOf("//><");
-	    if (pos >= 0)
-		x[i] = x[i].substring(pos+4);
-	}
-	StringBuilder sb = new StringBuilder();
-	for (String s:x) {sb.append("\n");sb.append(s);}
-	return sb.substring(1);
+        return output(usercode, Json.createArrayBuilder().add(
+            Json.createObjectBuilder()
+                .add("line", ""+row)
+                .add("event", "uncaught_exception")
+                .add("offset", ""+col)
+                .add("exception_msg", errmsg)
+        ).build());
     }
 
     static JsonObject output(String usercode, JsonArray trace) {
         JsonObjectBuilder result = Json.createObjectBuilder();
-        result
-            .add("code", fakify(usercode))
-            .add("stdin", InMemory.stdin)
-            .add("trace", trace);
-        if (userlogged != null) result.add("userlog", userlogged.toString());
+        result.add("code", usercode)
+              .add("stdin", InMemory.stdin)
+              .add("trace", trace);
+        if (userlogged != null) {
+            result.add("userlog", userlogged.toString());
+        }
         return result.build();
     }
 

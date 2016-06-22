@@ -105,7 +105,6 @@ public class InMemory {
         try {
             this.sourceFiles = FakeFile.parseJsonFiles(
                 frontend_data.getJsonArray("files"));
-            validateSourceFiles(this.sourceFiles);
         } catch (FakeFile.NameException ex) {
             this.usercode = "[could not read user code]";
             compileError(ex.getMessage(), 1, 1);
@@ -132,7 +131,8 @@ public class InMemory {
         DiagnosticCollector<JavaFileObject> errorCollector = new DiagnosticCollector<>();
         c2b.diagnosticListener = errorCollector;
 
-        bytecode = c2b.compileFiles(generateFileInfo());
+        String[][] fileInfo = FakeFile.fakeFileListToPairArray(this.sourceFiles);
+        bytecode = c2b.compileFiles(fileInfo);
 
         if (bytecode == null) {
             for (Diagnostic<? extends JavaFileObject> err : errorCollector.getDiagnostics())
@@ -150,56 +150,6 @@ public class InMemory {
         tt.start();
 
         vm.resume();
-    }
-
-    /*
-     * This is related to the Princeton workaround.
-     * Eventually we should have an "stdlib" directory that gets parsed.
-     */
-    private void validateSourceFiles(List<FakeFile> sourceFiles) {
-        for (FakeFile f : sourceFiles) {
-            String name = f.getName();
-            for (String S : JDI2JSON.PU_stdlib) {
-                if (name.equals(S)) {
-                    String message = "You cannot use a class named " +
-                        S + " since it conflicts with a 'stdlib' class name";
-                    compileError(message, 1, 1);
-                }
-            }
-        }
-    }
-
-    private String[][] generateFileInfo() {
-        List<FakeFile> files = new ArrayList<>(this.sourceFiles);
-        /*
-          For some reason the JVM at Princeton doesn't actually figure out
-          how to read these particular files off its classpath. So we'll
-          just throw them all in there manually.
-          TODO: Optimize and only use files actually referenced by student code.
-         */
-        boolean isPrinceton = System.getProperty("java.class.path").contains("cos126");
-        if (isPrinceton) {
-            files.addAll(generatePrincetonFakeFiles());
-        }
-        return FakeFile.fakeFileListToPairArray(files);
-
-    }
-
-    private List<FakeFile> generatePrincetonFakeFiles() {
-        List<FakeFile> fileList = new ArrayList<>();
-        fileList.add(new FakeFile("Stack",
-            getFileContents("cp/visualizer-stdlib/Stack.java")));
-        fileList.add(new FakeFile("Queue",
-            getFileContents("cp/visualizer-stdlib/Queue.java")));
-        fileList.add(new FakeFile("ST",
-            getFileContents("cp/visualizer-stdlib/ST.java")));
-        fileList.add(new FakeFile("StdIn",
-            getFileContents("cp/visualizer-stdlib/StdIn.java")));
-        fileList.add(new FakeFile("StdOut",
-            getFileContents("cp/visualizer-stdlib/StdOut.java")));
-        fileList.add(new FakeFile("Stopwatch",
-            getFileContents("cp/visualizer-stdlib/Stopwatch.java")));
-        return fileList;
     }
 
     VirtualMachine launchVM(String className) {
