@@ -32,7 +32,6 @@ import javax.json.*;
 public class InMemory {
     private List<FakeFile> sourceFiles = new ArrayList<>();
 
-    String usercode;
     JsonObject optionsObject;
     JsonArray argsArray;
     String givenStdin;
@@ -74,17 +73,15 @@ public class InMemory {
                          Json.createReader(new InputStreamReader
                                            (System.in, "UTF-8"))
                          .readObject());
-        }
-        catch (IOException e) {
-            System.out.print(JDI2JSON.compileErrorOutput("[could not read user code]",
-                                                         "Internal IOException in php->java",
-                                                         1, 1));
+        } catch (IOException e) {
+            String message = "Internal IOException in php->java";
+            System.out.print(JDI2JSON.compileErrorOutput(message, 1, 1));
         }
     }
 
     // convenience version of JDI2JSON method
     void compileError(String msg, long row, long col) {
-        JsonObject json = JDI2JSON.compileErrorOutput(usercode, msg, row, col);
+        JsonObject json = JDI2JSON.compileErrorOutput(msg, row, col);
         String output = json.toString();
 
         try {
@@ -106,12 +103,10 @@ public class InMemory {
             this.sourceFiles = FakeFile.parseJsonFiles(
                 frontend_data.getJsonArray("files"));
         } catch (FakeFile.NameException ex) {
-            this.usercode = "[could not read user code]";
             compileError(ex.getMessage(), 1, 1);
         }
-        // FIXME kind of a hack for now, until we use the file list everywhere
+        // FIXME kind of a hack for now
         this.mainClass = sourceFiles.get(0).getName();
-        this.usercode = sourceFiles.get(0).getCode();
 
         if (frontend_data.containsKey("visualizer_args") && (!frontend_data.isNull("visualizer_args"))) {
             JsonObject visualizer_args = frontend_data.getJsonObject("visualizer_args");

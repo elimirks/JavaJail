@@ -4,7 +4,7 @@ I created these notes in summer 2013 but didn't post them until
 January 2014. Read them at your discretion. -- Dave Pritchard
 
 Memory usage, part 1
-====================
+--------------------
 By default, java may use a lot of memory. You can, sort of, try to
 control it. Here are the defaults on my machine:
 
@@ -36,7 +36,7 @@ I run java with -Xmx1024M, then the above reports "Max memory:
 about new int[175_000_000] (or about 7*10^8 bytes ~ 667M).
 
 Memory usage, part 2
-====================
+--------------------
 The way that traceprinter works, we actually have two VMs. One is
 the debugger, which is started first, and whose -Xmx setting is
 done by the command-line (or whoever calls java
@@ -55,11 +55,11 @@ using this for now. (This gives the user about 80M of usable space,
 using the new int[] test.)
 
 Memory usage, part 3
-====================
+--------------------
 Now let's consider the fact that we want to run all of this under
 safeexec. On my machine, it appears that the limits enforced by
 safeexec successfully limit the sum of the memories used by both
-VMs. So the --mem option for safeexec must be at least 256*1024 K.
+VMs. So the --mem option for safeexec must be at least 256\*1024 K.
 However, there seems to be more overhead somewhere along the line,
 as,
 

@@ -712,8 +712,8 @@ public class JDI2JSON {
         }
     }
 
-    static JsonObject compileErrorOutput(String usercode, String errmsg, long row, long col) {
-        return output(usercode, Json.createArrayBuilder().add(
+    static JsonObject compileErrorOutput(String errmsg, long row, long col) {
+        return output(Json.createArrayBuilder().add(
             Json.createObjectBuilder()
                 .add("line", ""+row)
                 .add("event", "uncaught_exception")
@@ -722,10 +722,9 @@ public class JDI2JSON {
         ).build());
     }
 
-    static JsonObject output(String usercode, JsonArray trace) {
+    static JsonObject output(JsonArray trace) {
         JsonObjectBuilder result = Json.createObjectBuilder();
-        result.add("code", usercode)
-              .add("stdin", InMemory.stdin)
+        result.add("stdin", InMemory.stdin)
               .add("trace", trace);
         if (userlogged != null) {
             result.add("userlog", userlogged.toString());

@@ -3,13 +3,13 @@
 traceprinter: a Java package to print traces of Java programs
 David Pritchard (daveagp@gmail.com), created May 2013
 
-The contents of this directory are released under the GNU Affero 
+The contents of this directory are released under the GNU Affero
 General Public License, versions 3 or later. See LICENSE or visit:
 http://www.gnu.org/licenses/agpl.html
 
 See README for documentation on this package.
 
-This file was originally based on 
+This file was originally based on
 com.sun.tools.example.trace.EventThread, written by Robert Field.
 
 ******************************************************************************/
@@ -24,7 +24,7 @@ import java.util.*;
 import java.io.*;
 import javax.json.*;
 
-/* 
+/*
  * Original author: Robert Field, see
  *
  * This version: David Pritchard (http://dave-pritchard.net)
@@ -39,9 +39,9 @@ public class JSONTracingThread extends Thread {
 
     private boolean connected = true;  // Connected to VM
     private boolean vmDied = true;     // VMDeath occurred
-    
-    private EventRequestManager mgr; 
-    
+
+    private EventRequestManager mgr;
+
     private JDI2JSON jdi2json;
 
     static int MAX_STEPS = 256;
@@ -52,19 +52,16 @@ public class JSONTracingThread extends Thread {
 
     static int MAX_STACK_SIZE = 16;
 
-    private String usercode;
-
     private InMemory im;
 
     private VMCommander vmc;
-    
+
     private JsonArrayBuilder output = Json.createArrayBuilder();
 
     JSONTracingThread(InMemory im) {
         super("event-handler");
         this.vm = im.vm;
         this.im = im;
-        this.usercode = im.usercode;
         mgr = vm.eventRequestManager();
         jdi2json = new JDI2JSON(vm,
                                 vm.process().getInputStream(),
@@ -72,7 +69,7 @@ public class JSONTracingThread extends Thread {
                                 im.optionsObject);
         setEventRequests();
     }
-    
+
     void setEventRequests() {
         ExceptionRequest excReq = mgr.createExceptionRequest(null, true, true);
         excReq.setSuspendPolicy(EventRequest.SUSPEND_ALL);
@@ -102,7 +99,7 @@ public class JSONTracingThread extends Thread {
         cpr.setSuspendPolicy(EventRequest.SUSPEND_ALL);
         cpr.enable();
     }
-    
+
     @Override
     public void run() {
         StepRequest request = null;
@@ -120,10 +117,10 @@ public class JSONTracingThread extends Thread {
                         output.add(Json.createObjectBuilder()
                                    .add("exception_msg", "<exceeded max visualizer time limit>")
                                    .add("event", "instruction_limit_reached"));
-                        
-                        try { 
+
+                        try {
                             PrintStream out = new PrintStream(System.out, true, "UTF-8");
-                            String outputString = JDI2JSON.output(usercode, output.build()).toString();
+                            String outputString = JDI2JSON.output(output.build()).toString();
                             out.print(outputString);
                         } catch (UnsupportedEncodingException e) {
                             System.out.print("UEE");
@@ -141,9 +138,9 @@ public class JSONTracingThread extends Thread {
                         mgr.deleteEventRequest(request);
                         request = null;
                     }
-                    if (ev instanceof LocatableEvent && 
+                    if (ev instanceof LocatableEvent &&
                         jdi2json.reportEventsAtLocation(((LocatableEvent)ev).location())
-                        || 
+                        ||
                         (ev.toString().contains("NoopMain")))
                         {
                         request = mgr.
@@ -166,18 +163,18 @@ public class JSONTracingThread extends Thread {
         String outputString = null;
         try {
             if (vmc == null) {
-                outputString = JDI2JSON.compileErrorOutput(usercode, "Internal error: there was an error starting the debuggee VM.", 0, 0).toString();
+                outputString = JDI2JSON.compileErrorOutput("Internal error: there was an error starting the debuggee VM.", 0, 0).toString();
             }
             else {
                 vmc.join();
                 if (vmc.success == null) {
-                    outputString = JDI2JSON.compileErrorOutput(usercode, "Success is null?", 0, 0).toString();
+                    outputString = JDI2JSON.compileErrorOutput("Success is null?", 0, 0).toString();
                 }
                 else if (vmc.success == false) {
-                    outputString = JDI2JSON.compileErrorOutput(usercode, vmc.errorMessage, 1, 1).toString();
+                    outputString = JDI2JSON.compileErrorOutput(vmc.errorMessage, 1, 1).toString();
                 }
                 else {
-                    outputString = JDI2JSON.output(usercode, output.build()).toString();
+                    outputString = JDI2JSON.output(output.build()).toString();
                 }
             }
         }
@@ -185,7 +182,7 @@ public class JSONTracingThread extends Thread {
             e.printStackTrace(System.out);
         }
 
-        try { 
+        try {
             PrintStream out = new PrintStream(System.out, true, "UTF-8");
             out.print(outputString);
         } catch (UnsupportedEncodingException e) {
@@ -194,7 +191,7 @@ public class JSONTracingThread extends Thread {
     }
 
     ThreadReference theThread = null;
-        
+
     private Thread handleEvent(Event event) {
         //System.out.println(event);
         if (event instanceof ClassPrepareEvent) {
@@ -203,8 +200,8 @@ public class JSONTracingThread extends Thread {
             vmDeathEvent((VMDeathEvent)event);
         } else if (event instanceof VMDisconnectEvent) {
             vmDisconnectEvent((VMDisconnectEvent)event);
-        } 
-        
+        }
+
         if (event instanceof LocatableEvent) {
             //System.out.println("in handle subloop: " + steps+" "+event);
             if (theThread == null)
@@ -227,7 +224,7 @@ public class JSONTracingThread extends Thread {
 		try {
                     for (JsonObject ep : jdi2json.convertExecutionPoint(event, loc, theThread)) {
 			output.add(ep);
-			steps++;	  
+			steps++;
                         int stackSize = ((JsonArray)ep.get("stack_to_render")).size();
 
                         boolean quit = false;
@@ -257,7 +254,7 @@ public class JSONTracingThread extends Thread {
         }
         return null;
     }
-    
+
     /***
      * A VMDisconnectedException has happened while dealing with
      * another event. We need to flush the event queue, dealing only
@@ -292,7 +289,7 @@ public class JSONTracingThread extends Thread {
         if (!rt.name().equals("traceprinter.shoelace.NoopMain")) {
             if (rt.name().equals("StdIn"))
                 jdi2json.stdinRT = rt;
-            
+
             if (jdi2json.in_builtin_package(rt.name()))
                 return;
         }
@@ -319,5 +316,5 @@ public class JSONTracingThread extends Thread {
     public void vmDisconnectEvent(VMDisconnectEvent event) {
         connected = false;
     }
-    
+
 }
