@@ -1,7 +1,13 @@
 {
     "files": [
-        "public class Test { public static void main(String[] args) { int x = 3; x += x; Hai h = new Hai(); } }",
-        "public class Hai {\npublic Hai() {}\n}"
+        {
+            "name": null,
+            "code": "public class Test { public static void main(String[] args) { int x = 3; x += x; Hai h = new Hai(); } }"
+        },
+        {
+            "name": "Foobar",
+            "code": "lass Hai {\npublic Hai() {}\n}"
+        }
     ],
     "options": {},
     "args": [],

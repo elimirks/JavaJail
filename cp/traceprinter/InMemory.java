@@ -30,6 +30,8 @@ import traceprinter.ramtools.*;
 import javax.json.*;
 
 public class InMemory {
+    private List<FakeFile> sourceFiles = new ArrayList<>();
+
     String usercode;
     JsonObject optionsObject;
     JsonArray argsArray;
@@ -82,12 +84,14 @@ public class InMemory {
 
     // convenience version of JDI2JSON method
     void compileError(String msg, long row, long col) {
+        JsonObject json = JDI2JSON.compileErrorOutput(usercode, msg, row, col);
+        String output = json.toString();
+
         try {
             PrintStream out = new PrintStream(System.out, true, "UTF-8");
-            out.print(JDI2JSON.compileErrorOutput(usercode, msg, row, col));
-        }
-        catch (UnsupportedEncodingException e) { //fallback
-            System.out.print(JDI2JSON.compileErrorOutput(usercode, msg, row, col));
+            out.print(output);
+        } catch (UnsupportedEncodingException e) { //fallback
+            System.out.print(output);
         }
         System.exit(0);
     }
@@ -98,6 +102,17 @@ public class InMemory {
         this.argsArray = frontend_data.getJsonArray("args");
         this.givenStdin = frontend_data.getJsonString("stdin").getString();
         stdin = this.givenStdin;
+        try {
+            this.sourceFiles = FakeFile.parseJsonFiles(
+                frontend_data.getJsonArray("files"));
+            validateSourceFiles(this.sourceFiles);
+        } catch (FakeFile.NameException ex) {
+            this.usercode = "[could not read user code]";
+            compileError(ex.getMessage(), 1, 1);
+        }
+        // FIXME kind of a hack for now, until we use the file list everywhere
+        this.mainClass = sourceFiles.get(0).getName();
+        this.usercode = sourceFiles.get(0).getCode();
 
         if (frontend_data.containsKey("visualizer_args") && (!frontend_data.isNull("visualizer_args"))) {
             JsonObject visualizer_args = frontend_data.getJsonObject("visualizer_args");
@@ -117,26 +132,7 @@ public class InMemory {
         DiagnosticCollector<JavaFileObject> errorCollector = new DiagnosticCollector<>();
         c2b.diagnosticListener = errorCollector;
 
-        List<String[]> fileList = parseJsonIntoFileInfo(
-            frontend_data.getJsonArray("files"));
-
-        /*
-          For some reason the JVM at Princeton doesn't actually figure out
-          how to read these particular files off its classpath. So we'll
-          just throw them all in there manually.
-          TODO: Optimize and only use files actually referenced by student code.
-         */
-        boolean isPrinceton = System.getProperty("java.class.path").contains("cos126");
-        if (isPrinceton) {
-            fileList.addAll(generatePrincetonFileList());
-        }
-
-        String[][] fileinfo = fileList.toArray(new String[fileList.size()][]);
-        bytecode = c2b.compileFiles(fileinfo);
-
-        // FIXME kind of a hack for now, until we user the file list everywhere
-        this.mainClass = fileList.get(0)[0];
-        this.usercode = fileList.get(0)[1];
+        bytecode = c2b.compileFiles(generateFileInfo());
 
         if (bytecode == null) {
             for (Diagnostic<? extends JavaFileObject> err : errorCollector.getDiagnostics())
@@ -156,68 +152,53 @@ public class InMemory {
         vm.resume();
     }
 
-    private List<String[]> generatePrincetonFileList() {
-        List<String[]> fileList = new ArrayList<String[]>();
-        fileList.add(new String[] {"Stack",
-            getFileContents("cp/visualizer-stdlib/Stack.java")});
-        fileList.add(new String[] {"Queue",
-            getFileContents("cp/visualizer-stdlib/Queue.java")});
-        fileList.add(new String[] {"ST",
-            getFileContents("cp/visualizer-stdlib/ST.java")});
-        fileList.add(new String[] {"StdIn",
-            getFileContents("cp/visualizer-stdlib/StdIn.java")});
-        fileList.add(new String[] {"StdOut",
-            getFileContents("cp/visualizer-stdlib/StdOut.java")});
-        fileList.add(new String[] {"Stopwatch",
-            getFileContents("cp/visualizer-stdlib/Stopwatch.java")});
-        return fileList;
-    }
-
-    /**
-     * Extract the public class from the given code.
-     * This will stop the program and display an error if
-     * no public class is found.
-     *
-     * @param code The code to strip the class name from.
-     * @return The public class name from the given code.
+    /*
+     * This is related to the Princeton workaround.
+     * Eventually we should have an "stdlib" directory that gets parsed.
      */
-    private String publicClassFromCode(String code) {
-        // Not 100% accurate if people have multiple top-level classes.
-        Pattern p = Pattern.compile("public\\s+class\\s+([a-zA-Z0-9_]+)\\b");
-        Matcher m = p.matcher(code);
-        if ( ! m.find()) {
-            String message = "Error: Make sure your code includes " +
-                "'public class \u00ABClassName\u00BB'";
-            compileError(message, 1, 1);
-        }
-
-        String pubClass = m.group(1);
-
-        for (String S : JDI2JSON.PU_stdlib) {
-            if (pubClass.equals(S)) {
-                String message = "You cannot use a class named " +
-                    S + " since it conflicts with a 'stdlib' class name";
-                compileError(message, 1, 1);
+    private void validateSourceFiles(List<FakeFile> sourceFiles) {
+        for (FakeFile f : sourceFiles) {
+            String name = f.getName();
+            for (String S : JDI2JSON.PU_stdlib) {
+                if (name.equals(S)) {
+                    String message = "You cannot use a class named " +
+                        S + " since it conflicts with a 'stdlib' class name";
+                    compileError(message, 1, 1);
+                }
             }
         }
-
-        return pubClass;
     }
 
-    /**
-     * @param json An array of code strings - files, if you will.
-     * @return A pair list with the primary class name and code.
-     */
-    private List<String[]> parseJsonIntoFileInfo(JsonArray json) {
-        List<String[]> fileList = new ArrayList<String[]>();
-
-        for (int i = 0; i < json.size(); i++) {
-            String code = json.getJsonString(i).getString();
-            fileList.add(new String[] {
-                publicClassFromCode(code),
-                code
-            });
+    private String[][] generateFileInfo() {
+        List<FakeFile> files = new ArrayList<>(this.sourceFiles);
+        /*
+          For some reason the JVM at Princeton doesn't actually figure out
+          how to read these particular files off its classpath. So we'll
+          just throw them all in there manually.
+          TODO: Optimize and only use files actually referenced by student code.
+         */
+        boolean isPrinceton = System.getProperty("java.class.path").contains("cos126");
+        if (isPrinceton) {
+            files.addAll(generatePrincetonFakeFiles());
         }
+        return FakeFile.fakeFileListToPairArray(files);
+
+    }
+
+    private List<FakeFile> generatePrincetonFakeFiles() {
+        List<FakeFile> fileList = new ArrayList<>();
+        fileList.add(new FakeFile("Stack",
+            getFileContents("cp/visualizer-stdlib/Stack.java")));
+        fileList.add(new FakeFile("Queue",
+            getFileContents("cp/visualizer-stdlib/Queue.java")));
+        fileList.add(new FakeFile("ST",
+            getFileContents("cp/visualizer-stdlib/ST.java")));
+        fileList.add(new FakeFile("StdIn",
+            getFileContents("cp/visualizer-stdlib/StdIn.java")));
+        fileList.add(new FakeFile("StdOut",
+            getFileContents("cp/visualizer-stdlib/StdOut.java")));
+        fileList.add(new FakeFile("Stopwatch",
+            getFileContents("cp/visualizer-stdlib/Stopwatch.java")));
         return fileList;
     }
 
@@ -313,3 +294,4 @@ http://docs.oracle.com/javase/7/docs/jdk/api/jpda/jdi/com/sun/jdi/connect/Connec
         throw new Error("No launching connector");
     }
 }
+

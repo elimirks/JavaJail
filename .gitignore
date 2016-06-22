@@ -5,3 +5,4 @@ compile
 etc/resolv.conf
 lib
 princeton-Makefile
+*.sw?
