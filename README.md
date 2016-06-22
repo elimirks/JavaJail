@@ -20,9 +20,11 @@ Installation steps
 ------------------
 
 Lazy Approach:
+
 0. Run ./setup.sh
 
 Manual Approach:
+
 0. It is highly recommended to NOT put this directory anywhere accessible
     via http, just for sanity's sake.
 1. Get java. As of the time of writing, a suitable link for wget is:
