@@ -4,7 +4,7 @@
 	</target>
 
 	<path id="master-classpath">
-		<pathelement location="cp/javax.json-1.0.jar" />
+		<pathelement location="jar/javax.json-1.0.jar" />
 		<pathelement location="java/lib/tools.jar" />
 		<pathelement location="build" />
 	</path>

@@ -1,9 +1,11 @@
-java_jail: chroot java jail, and JSON java trace printer
-David Pritchard (daveagp@gmail.com), created May 2013
+JavaJail: chroot java jail, and JSON java trace printer
 
-This is the backend for a Java version of Philip Guo's Python visualizer.
-Try it at: 
-      http://cscircles.cemc.uwaterloo.ca/java-visualize/
+
+Based on java_jail by David Pritchard (daveagp@gmail.com), created May 2013
+https://github.com/daveagp/java_jail
+
+This is the backend for PCRS-Java
+https://mcs.utm.utoronto.ca/~pcrs/java-programming/index.shtml
 
 This directory serves 2 purposes:
  -- . serves as chroot (changed root) for executing Java programs
@@ -12,19 +14,20 @@ This directory serves 2 purposes:
     format used by http://pythontutor.com/
     See ./cp/traceprinter/README for documentation on that part.
 
-The significant code in this directory is the documentation, and the 
-contents of ./cp/traceprinter. Both are released under the GNU Affero 
+The significant code in this directory is the documentation, and the
+contents of ./cp/traceprinter. Both are released under the GNU Affero
 General Public License, versions 3 or later. See LICENSE or visit:
 http://www.gnu.org/licenses/agpl.html
 
 This project would not be possible without the package
-com.sun.tools.example.trace, written by Robert Field. The traceprinter 
+com.sun.tools.example.trace, written by Robert Field. The traceprinter
 package was initially created from that package.
 
-=== Setting up a chroot jail for java ===
+Setting up a chroot jail for java
+---------------------------------
 
 The good news is that java for linux is available as a single self-contained
-archive (we used jdk-7u21-linux-x64.gz). 
+archive (we used jdk-7u21-linux-x64.gz).
 
 The bad news is that it also uses various shared object files not contained
 in there, as well as various pseudo-files. So the chroot jail must also
@@ -43,11 +46,11 @@ Installation steps:
 
 (0) It is highly recommended to NOT put this directory anywhere accessible
     via http, just for sanity's sake.
-(1) Get java. As of the time of writing, a suitable link for wget is: 
+(1) Get java. As of the time of writing, a suitable link for wget is:
 
 wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u20-b26/jdk-8u20-linux-x64.tar.gz
 
-(props to http://stackoverflow.com/questions/10268583) 
+(props to http://stackoverflow.com/questions/10268583)
 Extract java with gunzip and tar -xvf.
 Rename that jdk1.8.0_20 to "java"
 (2) You will need to copy some library files into the jail.
@@ -57,7 +60,7 @@ Rename that jdk1.8.0_20 to "java"
     after you chroot.
 
     HARD MODE: If you want to copy a minimum number of files, a good start is
-    to run "ldd java/bin/java" from within java_jail. 
+    to run "ldd java/bin/java" from within java_jail.
     See ./lib64/.gitignore for what we needed on our dev machine.
       (From Sasha Sirotkin: on Ubuntu, those files might instead need to
        be in lib/x86_64-linux-gnu instead.)
@@ -81,15 +84,17 @@ Rename that jdk1.8.0_20 to "java"
     But, the JDI requires access to a local debugging port to
     communicate between the tracing VM and the traced VM. On our system,
     all sandboxed executions run with group id 1000, so we have
-# to allow JDI:
+
+to allow JDI:
 -A OUTPUT -p tcp -d 127.0.0.1 --dport 32000:65535 -m owner --gid-owner 1000 -j ACCEPT
-# to deny everything else:
+to deny everything else:
 -A OUTPUT -m owner --gid-owner 1000 -j DROP
 
 If you want to allow connections to the outgoing world, particularly in Java,
 you will have to copy /etc/resolv.conf into the etc of the jail.
 
-=== Testing ===
+Testing
+-------
 
 Assuming you have CEMC safeexec (https://github.com/cemc/safeexec)
 installed, here is a way how to test whether things are installed correctly.
@@ -107,8 +112,10 @@ The expected output is at cp/traceprinter/expected-output.txt
 
 Notes from different machines: on at least one machine, nfile and nproc needed to be set to 100.
 
-===
+Misc
+----
 
 I found these links useful at some point:
 http://www.cyberciti.biz/faq/howto-run-nginx-in-a-chroot-jail/
 http://interreality.org/~reed/java-chroot.html
+

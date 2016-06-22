@@ -6,7 +6,7 @@
         },
         {
             "name": "Foobar",
-            "code": "lass Hai {\npublic Hai() {}\n}"
+            "code": "class Hai {\npublic Hai() {}\n}"
         }
     ],
     "options": {},
