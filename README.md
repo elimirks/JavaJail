@@ -1,5 +1,5 @@
-JavaJail: chroot java jail, and JSON java trace printer
-
+JavaJail: chroot jail and trace printer
+=======================================
 
 Based on java_jail by David Pritchard (daveagp@gmail.com), created May 2013
 https://github.com/daveagp/java_jail
@@ -8,14 +8,14 @@ This is the backend for PCRS-Java
 https://mcs.utm.utoronto.ca/~pcrs/java-programming/index.shtml
 
 This directory serves 2 purposes:
- -- . serves as chroot (changed root) for executing Java programs
- -- ./cp/traceprinter contains a Java program to print traces of Java
+- '.' serves as chroot (changed root) for executing Java programs
+- './build/traceprinter' contains a Java program to print traces of Java
     programs as they execute, printing the results to the same JSON
     format used by http://pythontutor.com/
-    See ./cp/traceprinter/README for documentation on that part.
+    See ./src/traceprinter/README for documentation on that part.
 
 The significant code in this directory is the documentation, and the
-contents of ./cp/traceprinter. Both are released under the GNU Affero
+contents of ./src/traceprinter. Both are released under the GNU Affero
 General Public License, versions 3 or later. See LICENSE or visit:
 http://www.gnu.org/licenses/agpl.html
 
@@ -38,11 +38,12 @@ For chroot jail to work, the full contents of this directory should be:
 ./java/: copy of unzipped java installation
 ./{etc,lib64}/: necessary libraries
 ./{dev,proc}/: necessary pseudo-files
-./cp/: we use this to hold application-specific java classpath stuff
+./build/: we use this to hold application-specific java classpath stuff
 
 as well as README, LICENSE, and some .git files.
 
-Installation steps:
+Installation steps
+------------------
 
 (0) It is highly recommended to NOT put this directory anywhere accessible
     via http, just for sanity's sake.
@@ -99,16 +100,12 @@ Testing
 Assuming you have CEMC safeexec (https://github.com/cemc/safeexec)
 installed, here is a way how to test whether things are installed correctly.
 
-(0) Go in to ./cp and run "make" there
-
-(1) Run this command (from java_jail):
-
-./java/bin/java -cp .:cp:cp/javax.json-1.0.jar:java/lib/tools.jar traceprinter.InMemory < cp/traceprinter/test-input.txt
-
-The expected output is at cp/traceprinter/expected-output.txt
-
-(2) Try with safeexec (from java_jail):
-/path/to/safeexec --chroot_dir . --exec_dir / --share_newnet --nproc 50 --mem 3000000 --nfile 30 --env_vars CLASSPATH=/cp/:/cp/javax.json-1.0.jar:/java/lib/tools.jar --exec /java/bin/java traceprinter.InMemory < cp/traceprinter/test-input.txt
+0. Run `ant build`
+1. Run this command (from java_jail):
+    - `./java/bin/java -cp build:jar/javax.json-1.0.jar:java/lib/tools.jar traceprinter.InMemory < doc/testfiles/test-input.json`
+    - The expected output is at doc/testfiles/expected-output.json
+2. Try with safeexec (from java_jail):
+    - `/path/to/safeexec --chroot_dir . --exec_dir / --share_newnet --nproc 50 --mem 3000000 --nfile 30 --env_vars CLASSPATH=/build/:/jar/javax.json-1.0.jar:/java/lib/tools.jar --exec /java/bin/java traceprinter.InMemory < doc/testfiles/test-input.json`
 
 Notes from different machines: on at least one machine, nfile and nproc needed to be set to 100.
 
