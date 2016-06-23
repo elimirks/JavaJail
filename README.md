@@ -19,23 +19,14 @@ package was initially created from that package.
 Installation steps
 ------------------
 
-Lazy Approach:
-0. Run ./setup.sh
-
-Manual Approach:
-0. It is highly recommended to NOT put this directory anywhere accessible
-    via http, just for sanity's sake.
-1. Get java. As of the time of writing, a suitable link for wget is:
-    `wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u20-b26/jdk-8u20-linux-x64.tar.gz`
-    (props to http://stackoverflow.com/questions/10268583)
-    Extract java with gunzip and tar -xvf.
-    Move jdk1.8.0_20 contents to "java"
-2. Run `ant build`
+1. Install JDK (not JRE) if it isn't installed
+2. Make sure the `JAVA_HOME` environment variable is set to a JDK path
+3. Run `ant build`
 
 Testing
 -------
 
 To test, try this:
-`./java/bin/java -cp build:jar/javax.json-1.0.jar:java/lib/tools.jar traceprinter.InMemory < doc/testfiles/test-input.json`
+`java -cp build:jar/javax.json-1.0.jar:$JAVA_HOME/lib/tools.jar traceprinter.InMemory < doc/testfiles/test-input.json`
 The expected output is at doc/testfiles/expected-output.json
 

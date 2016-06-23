@@ -5,13 +5,13 @@
 
 	<path id="master-classpath">
 		<pathelement location="jar/javax.json-1.0.jar" />
-		<pathelement location="java/lib/tools.jar" />
+        <pathelement location="${java.home}/lib/tools.jar" />
 		<pathelement location="build" />
 	</path>
 
 	<target name="build">
 		<mkdir dir="build" />
-		<javac srcdir="src" destdir="build" debug="true" executable="java/bin/javac">
+		<javac srcdir="src" destdir="build" debug="true">
 			<classpath refid="master-classpath" />
 		</javac>
 	</target>
