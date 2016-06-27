@@ -163,15 +163,15 @@ public class JSONTracingThread extends Thread {
         String outputString = null;
         try {
             if (vmc == null) {
-                outputString = JDI2JSON.compileErrorOutput("Internal error: there was an error starting the debuggee VM.", 0, 0).toString();
+                outputString = JDI2JSON.compileErrorOutput("Internal error: there was an error starting the debuggee VM.").toString();
             }
             else {
                 vmc.join();
                 if (vmc.success == null) {
-                    outputString = JDI2JSON.compileErrorOutput("Success is null?", 0, 0).toString();
+                    outputString = JDI2JSON.compileErrorOutput("Success is null?").toString();
                 }
                 else if (vmc.success == false) {
-                    outputString = JDI2JSON.compileErrorOutput(vmc.errorMessage, 1, 1).toString();
+                    outputString = JDI2JSON.compileErrorOutput(vmc.errorMessage).toString();
                 }
                 else {
                     outputString = JDI2JSON.output(output.build()).toString();

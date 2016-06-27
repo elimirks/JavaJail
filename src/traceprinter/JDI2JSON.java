@@ -712,12 +712,18 @@ public class JDI2JSON {
         }
     }
 
-    static JsonObject compileErrorOutput(String errmsg, long row, long col) {
+    static JsonObject compileErrorOutput(String errmsg) {
+        return compileErrorOutput(errmsg, "", 0, 0);
+    }
+
+    static JsonObject compileErrorOutput(String errmsg, String fileName,
+            long row, long col) {
         return output(Json.createArrayBuilder().add(
             Json.createObjectBuilder()
                 .add("line", ""+row)
-                .add("event", "uncaught_exception")
+                .add("file", fileName)
                 .add("offset", ""+col)
+                .add("event", "uncaught_exception")
                 .add("exception_msg", errmsg)
         ).build());
     }

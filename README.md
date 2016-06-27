@@ -4,7 +4,7 @@ JavaJail: JVM jail and trace printer
 Based on java_jail by David Pritchard (daveagp@gmail.com), created May 2013
 https://github.com/daveagp/java_jail
 
-This is the backend for PCRS-Java
+This is the backend for the PCRS-Java visualizer:
 https://mcs.utm.utoronto.ca/~pcrs/java-programming/index.shtml
 
 The significant code in this directory is the documentation, and the

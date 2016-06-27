@@ -69,28 +69,31 @@ public class InMemory {
         // reliably pass on to the debuggee.
 
         try {
-            new InMemory(
-                         Json.createReader(new InputStreamReader
-                                           (System.in, "UTF-8"))
-                         .readObject());
+            new InMemory(Json.createReader(
+                new InputStreamReader(System.in, "UTF-8")).readObject());
         } catch (IOException e) {
             String message = "Internal IOException in php->java";
-            System.out.print(JDI2JSON.compileErrorOutput(message, 1, 1));
+            System.out.print(JDI2JSON.compileErrorOutput(message));
         }
     }
 
-    // convenience version of JDI2JSON method
-    void compileError(String msg, long row, long col) {
-        JsonObject json = JDI2JSON.compileErrorOutput(msg, row, col);
-        String output = json.toString();
-
+    void printUTF8String(String str) {
         try {
             PrintStream out = new PrintStream(System.out, true, "UTF-8");
-            out.print(output);
+            out.print(str);
         } catch (UnsupportedEncodingException e) { //fallback
-            System.out.print(output);
+            System.out.print(str);
         }
-        System.exit(0);
+    }
+
+    // Convenience methods for JDI2JSON methods
+    void printCompileError(String msg, String file, long row, long col) {
+        JsonObject json = JDI2JSON.compileErrorOutput(msg, file, row, col);
+        printUTF8String(json.toString());
+    }
+    void printCompileError(String msg) {
+        JsonObject json = JDI2JSON.compileErrorOutput(msg);
+        printUTF8String(json.toString());
     }
 
     // figure out the class name, then compile and run main([])
@@ -103,25 +106,25 @@ public class InMemory {
             this.sourceFiles = FakeFile.parseJsonFiles(
                 frontend_data.getJsonArray("files"));
         } catch (FakeFile.NameException ex) {
-            compileError(ex.getMessage(), 1, 1);
+            printCompileError(ex.getMessage());
+            System.exit(0);
         }
         // FIXME kind of a hack for now
         this.mainClass = sourceFiles.get(0).getName();
 
-        if (frontend_data.containsKey("visualizer_args") && (!frontend_data.isNull("visualizer_args"))) {
-            JsonObject visualizer_args = frontend_data.getJsonObject("visualizer_args");
-            if (visualizer_args.getJsonNumber("MAX_STEPS") != null)
-                JSONTracingThread.MAX_STEPS = visualizer_args.getJsonNumber("MAX_STEPS").intValue();
-            if (visualizer_args.getJsonNumber("MAX_STACK_SIZE") != null)
-                JSONTracingThread.MAX_STACK_SIZE = visualizer_args.getJsonNumber("MAX_STACK_SIZE").intValue();
-            if (visualizer_args.getJsonNumber("MAX_WALLTIME_SECONDS") != null)
-                JSONTracingThread.MAX_WALLTIME_SECONDS = visualizer_args.getJsonNumber("MAX_WALLTIME_SECONDS").intValue();
+        boolean hasVisualizerArgs =
+            frontend_data.containsKey("visualizer_args") &&
+            ( ! frontend_data.isNull("visualizer_args"));
+        if (hasVisualizerArgs) {
+            JsonObject args = frontend_data.getJsonObject("visualizer_args");
+            setupVisualizerArgs(args);
         }
 
         CompileToBytes c2b = new CompileToBytes();
 
         c2b.compilerOutput = new StringWriter();
-        c2b.options = Arrays.asList("-g","-Xmaxerrs","1");//,"-classpath",System.getProperty("java.class.path"));
+        //,"-classpath",System.getProperty("java.class.path"));
+        c2b.options = Arrays.asList("-g","-Xmaxerrs","1");
 
         DiagnosticCollector<JavaFileObject> errorCollector = new DiagnosticCollector<>();
         c2b.diagnosticListener = errorCollector;
@@ -130,14 +133,28 @@ public class InMemory {
         bytecode = c2b.compileFiles(fileInfo);
 
         if (bytecode == null) {
-            for (Diagnostic<? extends JavaFileObject> err : errorCollector.getDiagnostics())
-                if (err.getKind() == Diagnostic.Kind.ERROR) {
-                    compileError("Error: " + err.getMessage(null), Math.max(0, err.getLineNumber()),
-                                 Math.max(0, err.getColumnNumber()));
-                }
-            compileError("Compiler did not work, but reported no ERROR?!?!", 0, 0);
+            exitWithErrorCollector(errorCollector);
+        } else {
+            startDebuggerVM();
         }
+    }
 
+    private void setupVisualizerArgs(JsonObject args) {
+        if (args.getJsonNumber("MAX_STEPS") != null) {
+            JSONTracingThread.MAX_STEPS = args.getJsonNumber(
+                "MAX_STEPS").intValue();
+        }
+        if (args.getJsonNumber("MAX_STACK_SIZE") != null) {
+            JSONTracingThread.MAX_STACK_SIZE = args.getJsonNumber(
+                "MAX_STACK_SIZE").intValue();
+        }
+        if (args.getJsonNumber("MAX_WALLTIME_SECONDS") != null) {
+            JSONTracingThread.MAX_WALLTIME_SECONDS = args.getJsonNumber(
+                "MAX_WALLTIME_SECONDS").intValue();
+        }
+    }
+
+    private void startDebuggerVM() {
         vm = launchVM("traceprinter.shoelace.NoopMain");
         vm.setDebugTraceMode(0);
 
@@ -145,6 +162,27 @@ public class InMemory {
         tt.start();
 
         vm.resume();
+    }
+
+    private void exitWithErrorCollector(
+            DiagnosticCollector<JavaFileObject> collector) {
+
+        for (Diagnostic<? extends JavaFileObject> err :
+                collector.getDiagnostics()) {
+            if (err.getKind() != Diagnostic.Kind.ERROR) {
+                continue;
+            }
+
+            String message = "Error: " + err.getMessage(null);
+            String fileName = err.getSource().toString();
+            long lineNumber = Math.max(0, err.getLineNumber());
+            long columnNumber = Math.max(0, err.getColumnNumber());
+
+            printCompileError(message, fileName, lineNumber, columnNumber);
+            System.exit(0);
+        }
+        printCompileError("Compiler did not work, but reported no ERROR?!?!");
+        System.exit(0);
     }
 
     VirtualMachine launchVM(String className) {
