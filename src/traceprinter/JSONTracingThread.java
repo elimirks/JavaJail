@@ -241,11 +241,9 @@ public class JSONTracingThread extends Thread {
         Location loc = event.location();
         ThreadReference thread = event.thread();
 
-        thread.suspend();
         for (JsonObject e : jdi2json.convertExecutionPoint(event, loc, thread)) {
             addExecutionPointToOutput(e);
         }
-        thread.resume();
     }
 
     /**

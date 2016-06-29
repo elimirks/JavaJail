@@ -27,6 +27,9 @@ Testing
 -------
 
 To test, try this:
-`java -cp build:jar/javax.json-1.0.jar:$JAVA_HOME/lib/tools.jar traceprinter.InMemory < doc/testfiles/test-input.json`
-The expected output is at doc/testfiles/expected-output.json
+`./run.sh < doc/testfiles/test-input.json`
+If you see a big JSON trace, it works. If you see ugly exceptions, it's broken.
+
+To see a fancy ncurses trace viewer, run:
+`./run.sh < doc/testfiles/test-input.json | ./traceStepper.py`
 
