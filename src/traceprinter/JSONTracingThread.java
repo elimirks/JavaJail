@@ -29,12 +29,12 @@ import javax.json.*;
  *
  * This version: David Pritchard (http://dave-pritchard.net)
  */
-
 public class JSONTracingThread extends Thread {
-
     private final VirtualMachine vm;   // Running VM
-    private String[] no_breakpoint_requests = {"java.*", "javax.*", "sun.*", "com.sun.*", "Stack", "Queue", "ST",
-                                               "jdk.internal.org.objectweb.asm.*" // for creating lambda classes
+    private String[] no_breakpoint_requests = {
+        "java.*", "javax.*", "sun.*", "com.sun.*",
+        "Stack", "Queue", "ST", // FIXME possibly remove these - legacy
+        "jdk.internal.org.objectweb.asm.*" // for creating lambda classes
     };
 
     private boolean connected = true;  // Connected to VM
@@ -107,46 +107,21 @@ public class JSONTracingThread extends Thread {
         while (connected) {
             try {
                 final EventSet eventSet = queue.remove();
-                for (Event ev : new Iterable<Event>(){public Iterator<Event> iterator(){return eventSet.eventIterator();}}) {
+                for (Event event : new EventSetIterable(eventSet)) {
+                    tryHandlingEvent(event);
+                    finishRequest(request);
 
+                    boolean isReportableEvent =
+                        event instanceof LocatableEvent &&
+                        jdi2json.reportEventsAtLocation(((LocatableEvent)event).location());
 
-                    //System.out.println("in run: " + steps+" "+ev+" "+(System.currentTimeMillis()-startTime));
+                    boolean shouldCreateStepRequest = isReportableEvent ||
+                        (event.toString().contains("NoopMain"));
 
-                    //        System.out.println(currentTimeMillis());
-                    if (System.currentTimeMillis() > MAX_WALLTIME_SECONDS * 1000 + InMemory.startTime) {
-                        output.add(Json.createObjectBuilder()
-                                   .add("exception_msg", "<exceeded max visualizer time limit>")
-                                   .add("event", "instruction_limit_reached"));
-
-                        try {
-                            PrintStream out = new PrintStream(System.out, true, "UTF-8");
-                            String outputString = JDI2JSON.output(output.build()).toString();
-                            out.print(outputString);
-                        } catch (UnsupportedEncodingException e) {
-                            System.out.print("UEE");
-                            }
-                        System.exit(0);
-                        vm.exit(0); // might take a long time
-                    }
-
-
-                    handleEvent(ev);
-                    if (request != null && request.isEnabled()) {
-                        request.disable();
-                    }
-                    if (request != null) {
-                        mgr.deleteEventRequest(request);
-                        request = null;
-                    }
-                    if (ev instanceof LocatableEvent &&
-                        jdi2json.reportEventsAtLocation(((LocatableEvent)ev).location())
-                        ||
-                        (ev.toString().contains("NoopMain")))
-                        {
-                        request = mgr.
-                            createStepRequest(((LocatableEvent)ev).thread(),
-                                              StepRequest.STEP_MIN,
-                                              StepRequest.STEP_INTO);
+                    if (shouldCreateStepRequest) {
+                        request = mgr.createStepRequest(((LocatableEvent)event).thread(),
+                            StepRequest.STEP_MIN,
+                            StepRequest.STEP_INTO);
                         request.addCountFilter(1);  // next step only
                         request.enable();
                     }
@@ -160,28 +135,7 @@ public class JSONTracingThread extends Thread {
                 break;
             }
         }
-        String outputString = null;
-        try {
-            if (vmc == null) {
-                outputString = JDI2JSON.compileErrorOutput("Internal error: there was an error starting the debuggee VM.").toString();
-            }
-            else {
-                vmc.join();
-                if (vmc.success == null) {
-                    outputString = JDI2JSON.compileErrorOutput("Success is null?").toString();
-                }
-                else if (vmc.success == false) {
-                    outputString = JDI2JSON.compileErrorOutput(vmc.errorMessage).toString();
-                }
-                else {
-                    outputString = JDI2JSON.output(output.build()).toString();
-                }
-            }
-        }
-        catch (Exception e) {
-            e.printStackTrace(System.out);
-        }
-
+        String outputString = createJsonOutputString();
         try {
             PrintStream out = new PrintStream(System.out, true, "UTF-8");
             out.print(outputString);
@@ -190,69 +144,151 @@ public class JSONTracingThread extends Thread {
         }
     }
 
-    ThreadReference theThread = null;
+    private String createJsonOutputString() {
+        if (vmc == null) {
+            return JDI2JSON.compileErrorOutput("Internal error: " +
+                " there was an error starting the debuggee VM.").toString();
+        }
 
-    private Thread handleEvent(Event event) {
-        //System.out.println(event);
+        try {
+            vmc.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        if ( ! vmc.wasSuccessful()) {
+            return JDI2JSON.compileErrorOutput(vmc.errorMessage).toString();
+        }
+        return JDI2JSON.output(output.build()).toString();
+    }
+
+    private void tryHandlingEvent(Event event) {
+        boolean hasExceededTimeLimit = System.currentTimeMillis() >
+            MAX_WALLTIME_SECONDS * 1000 + InMemory.startTime;
+        if (hasExceededTimeLimit) {
+            exitDueToTimeLimit();
+        }
+
         if (event instanceof ClassPrepareEvent) {
             classPrepareEvent((ClassPrepareEvent)event);
         } else if (event instanceof VMDeathEvent) {
             vmDeathEvent((VMDeathEvent)event);
         } else if (event instanceof VMDisconnectEvent) {
             vmDisconnectEvent((VMDisconnectEvent)event);
+        } else if (event instanceof LocatableEvent) {
+            handleLocatableEvent((LocatableEvent)event);
         }
+    }
 
-        if (event instanceof LocatableEvent) {
-            //System.out.println("in handle subloop: " + steps+" "+event);
-            if (theThread == null)
-                theThread = ((LocatableEvent)event).thread();
-            else {
-                if (theThread != ((LocatableEvent)event).thread())
-                    throw new RuntimeException("Assumes one thread!");
+    private void finishRequest(StepRequest request) {
+        if (request != null) {
+            if (request.isEnabled()) {
+                request.disable();
             }
-            Location loc = ((LocatableEvent)event).location();
-            try {
-                if (loc.sourceName().equals("NoopMain.java") && steps == 0) {
-                    steps++;
-                    vmc = new VMCommander(im, theThread);
-                    vmc.start();
-                }
-            } catch (AbsentInformationException e) {}
 
-            if (steps < MAX_STEPS && jdi2json.reportEventsAtLocation(loc)
-                || event instanceof ExceptionEvent && ((ExceptionEvent)event).catchLocation()==null) {
-		try {
-                    for (JsonObject ep : jdi2json.convertExecutionPoint(event, loc, theThread)) {
-			output.add(ep);
-			steps++;
-                        int stackSize = ((JsonArray)ep.get("stack_to_render")).size();
-
-                        boolean quit = false;
-                        if (stackSize >= MAX_STACK_SIZE) {
-                            output.add(Json.createObjectBuilder()
-                                       .add("exception_msg", "<exceeded max visualizer stack size>")
-                                       .add("event", "instruction_limit_reached"));
-                            quit = true;
-                        }
-			if (steps == MAX_STEPS) {
-                            output.add(Json.createObjectBuilder()
-                                       .add("exception_msg", "<exceeded max visualizer step limit>")
-                                       .add("event", "instruction_limit_reached"));
-			    quit = true;
-			}
-                        if (quit)
-                            vm.exit(0);
-		    }
-                    if (event instanceof ExceptionEvent && ((ExceptionEvent)event).catchLocation()==null) {
-                        vm.exit(0);
-                    }
-		} catch (RuntimeException e) {
-		    System.out.println("Error " + e.toString());
-		    e.printStackTrace();
-		}
-            }
+            mgr.deleteEventRequest(request);
+            request = null;
         }
-        return null;
+    }
+
+    private void exitDueToTimeLimit() {
+        output.add(Json.createObjectBuilder()
+                   .add("exception_msg", "<exceeded max visualizer time limit>")
+                   .add("event", "instruction_limit_reached"));
+
+        try {
+            PrintStream out = new PrintStream(System.out, true, "UTF-8");
+            String outputString = JDI2JSON.output(output.build()).toString();
+            out.print(outputString);
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        } finally {
+            System.exit(0);
+            vm.exit(0); // might take a long time
+        }
+    }
+
+    /**
+     * Handle the given event during VM runtime.
+     *
+     * The VM should be running on a single thread, or else we
+     * may get garbled output.
+     */
+    private void handleLocatableEvent(LocatableEvent event) {
+        tryInitVMCommander(event);
+
+        Location loc = event.location();
+
+        boolean isExceptionEvent = event instanceof ExceptionEvent &&
+            ((ExceptionEvent)event).catchLocation() == null;
+        boolean isReportableEvent = steps < MAX_STEPS &&
+            jdi2json.reportEventsAtLocation(loc);
+
+        if (isReportableEvent) {
+            addLocatableEventInfoToOutput(event);
+        } else if (isExceptionEvent) {
+            addLocatableEventInfoToOutput(event);
+            vm.exit(0);
+        }
+    }
+
+    /**
+     * Iterates through the new steps for the given event.
+     *
+     * @see JDI2JSON.convertExecutionPoint
+     */
+    private void addLocatableEventInfoToOutput(LocatableEvent event) {
+        Location loc = event.location();
+        ThreadReference thread = event.thread();
+
+        thread.suspend();
+        for (JsonObject e : jdi2json.convertExecutionPoint(event, loc, thread)) {
+            addExecutionPointToOutput(e);
+        }
+        thread.resume();
+    }
+
+    /**
+     * Adds a single execution point to the output.
+     *
+     * @see JDI2JSON.convertExecutionPoint for JSON format
+     */
+    private void addExecutionPointToOutput(JsonObject execPoint) {
+        output.add(execPoint);
+        steps++;
+        int stackSize = ((JsonArray)execPoint.get("stack_to_render")).size();
+
+        if (stackSize >= MAX_STACK_SIZE) {
+            output.add(Json.createObjectBuilder()
+                .add("exception_msg", "<exceeded max visualizer stack size>")
+                .add("event", "instruction_limit_reached"));
+            vm.exit(0);
+        } else if (steps == MAX_STEPS) {
+            output.add(Json.createObjectBuilder()
+                .add("exception_msg", "<exceeded max visualizer step limit>")
+                .add("event", "instruction_limit_reached"));
+            vm.exit(0);
+        }
+    }
+
+    /**
+     * Attempt to initialize the VMCommander once a VM thread is created.
+     *
+     * This must be done once the VM events start firing to grab a thread.
+     */
+    private void tryInitVMCommander(LocatableEvent event) {
+        // The vmc already exists - we don't need to init.
+        if (vmc != null) return;
+
+        try {
+            if (event.location().sourceName().equals("NoopMain.java")) {
+                steps++;
+                vmc = new VMCommander(im, event.thread());
+                vmc.start();
+            }
+        } catch (AbsentInformationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /***
@@ -317,4 +353,21 @@ public class JSONTracingThread extends Thread {
         connected = false;
     }
 
+
+    /**
+     * Provides an iterator to the EventSet class.
+     */
+    private class EventSetIterable implements Iterable<Event> {
+        private EventSet set;
+
+        public EventSetIterable(EventSet set) {
+            this.set = set;
+        }
+
+        @Override
+        public Iterator<Event> iterator() {
+            return set.eventIterator();
+        }
+    }
 }
+

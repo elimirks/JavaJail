@@ -3,7 +3,7 @@
 traceprinter: a Java package to print traces of Java programs
 David Pritchard (daveagp@gmail.com), created May 2013
 
-The contents of this directory are released under the GNU Affero 
+The contents of this directory are released under the GNU Affero
 General Public License, versions 3 or later. See LICENSE or visit:
 http://www.gnu.org/licenses/agpl.html
 
@@ -27,7 +27,7 @@ public class VMCommander extends Thread {
     private ClassType ClassLoader_;
     private ObjectReference ClassLoader_SystemClassLoader;
 
-    Boolean success;
+    private boolean success = false;
     String errorMessage;
 
     public VMCommander(InMemory im, ThreadReference tr) {
@@ -38,6 +38,10 @@ public class VMCommander extends Thread {
         this.mainClassName = im.mainClass;
     }
 
+    public boolean wasSuccessful() {
+        return success;
+    }
+
     ObjectReference VMCommandee_instance = null;
     public void run() {
         try {
@@ -45,7 +49,7 @@ public class VMCommander extends Thread {
 
             // first, make instance of ByteClassLoader
             ClassLoader_ = classType("java.lang.ClassLoader");
-            ClassLoader_SystemClassLoader = (ObjectReference) 
+            ClassLoader_SystemClassLoader = (ObjectReference)
                 call_s(ClassLoader_, "getSystemClassLoader");
 
             ObjectReference ByteClassLoader_instance = instantiate("traceprinter.shoelace.ByteClassLoader");
@@ -60,14 +64,14 @@ public class VMCommander extends Thread {
             ArrayReference mirrorOfArgs = newArray("java.lang.String", im.argsArray.size());
             for (int i=0; i<im.argsArray.size(); i++)
                 mirrorOfArgs.setValue(i, vm.mirrorOf(im.argsArray.getString(i)));
-            
+
             StringReference result;
             try {
                 result = (StringReference)
-                    call_i(VMCommandee_instance, 
-                           "runMain", 
-                           vm.mirrorOf(mainClassName), 
-                           mirrorOfArgs, 
+                    call_i(VMCommandee_instance,
+                           "runMain",
+                           vm.mirrorOf(mainClassName),
+                           mirrorOfArgs,
                            vm.mirrorOf(im.givenStdin));
             }
             catch (VMDisconnectedException e) {
@@ -101,38 +105,38 @@ public class VMCommander extends Thread {
 
     // calls the default no-arg constructor
     private ObjectReference instantiate(String x)
-        throws InvalidTypeException, ClassNotLoadedException, 
-               IncompatibleThreadStateException, InvocationException { 
+        throws InvalidTypeException, ClassNotLoadedException,
+               IncompatibleThreadStateException, InvocationException {
         ObjectReference Class_x = (ObjectReference)
-            call_i(ClassLoader_SystemClassLoader, ClassLoader_, "loadClass", 
+            call_i(ClassLoader_SystemClassLoader, ClassLoader_, "loadClass",
                    vm.mirrorOf(x));
         ArrayReference ConstructorArray_x = (ArrayReference)
             call_i(Class_x, "getConstructors");
         ObjectReference Constructor_x = (ObjectReference)
             ConstructorArray_x.getValue(0);
         ObjectReference x_instance = (ObjectReference)
-            call_i(Constructor_x, "newInstance");       
+            call_i(Constructor_x, "newInstance");
         return x_instance;
     }
 
-    // call instance method 
-    private Value call_i(ObjectReference o, String s, Value... v) 
-        throws InvalidTypeException, ClassNotLoadedException, 
+    // call instance method
+    private Value call_i(ObjectReference o, String s, Value... v)
+        throws InvalidTypeException, ClassNotLoadedException,
                IncompatibleThreadStateException, InvocationException {
         return call_i(o, (ClassType) o.referenceType(), s, v);
     }
- 
+
     // call instance method w.r.t. specific class
-    private Value call_i(ObjectReference o, ClassType t, String s, Value... v) 
-        throws InvalidTypeException, ClassNotLoadedException, 
+    private Value call_i(ObjectReference o, ClassType t, String s, Value... v)
+        throws InvalidTypeException, ClassNotLoadedException,
                IncompatibleThreadStateException, InvocationException {
         Method m = t.methodsByName(s).get(0);
         return o.invokeMethod(tr, m, lv(v), 0);
     }
 
     // call static method
-    private Value call_s(ClassType t, String s, Value... v) 
-        throws InvalidTypeException, ClassNotLoadedException, 
+    private Value call_s(ClassType t, String s, Value... v)
+        throws InvalidTypeException, ClassNotLoadedException,
                IncompatibleThreadStateException, InvocationException {
         Method m = t.methodsByName(s).get(0);
         return t.invokeMethod(tr, m, lv(v), 0);
@@ -152,13 +156,12 @@ public class VMCommander extends Thread {
         return Arrays.asList(vs);
     }
 
-    private ArrayReference mirrorOf(VirtualMachine vm, byte[] bytes) 
+    private ArrayReference mirrorOf(VirtualMachine vm, byte[] bytes)
         throws InvalidTypeException, ClassNotLoadedException {
         ArrayReference result = newArray("byte", bytes.length);
         for (int i=0; i < bytes.length; i++)
             result.setValue(i, vm.mirrorOf(bytes[i]));
         return result;
     }
-
-
 }
+
