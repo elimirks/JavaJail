@@ -31,5 +31,5 @@ To test, try this:
 If you see a big JSON trace, it works. If you see ugly exceptions, it's broken.
 
 To see a fancy ncurses trace viewer, run:
-`./run.sh < doc/testfiles/test-input.json | ./traceStepper.py`
+`./test/generateJailInput.py test/Dog.java | ./run.sh | test/traceStepper.py`
 

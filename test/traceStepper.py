@@ -8,7 +8,7 @@ import sys
 import json
 import curses
 
-def displayStep(stdscr, scrollOffset, stepNumber, step):
+def displayStep(stdscr, scrollOffset, stepNumber, steps):
     '''Displays a single step on the console.
 
     Params:
@@ -17,11 +17,14 @@ def displayStep(stdscr, scrollOffset, stepNumber, step):
         stepNumber: The trace index of the given step
         step: The step object.
     '''
-    header = 'Step ' + str(stepNumber) + ':'
-    header += '    (Scroll offset: {0})'.format(scrollOffset)
-    stdscr.addstr(2, 0, header)
+    step = steps[stepNumber]
 
-    jsonStr = json.dumps(step, indent=4, sort_keys=True)
+    stepHeader = 'Step {0:->3}/{1:->3}:'.format(stepNumber, len(steps) - 1)
+    offsetHeader = '(Scroll offset: {0})'.format(scrollOffset)
+    stdscr.addstr(2, 0, stepHeader)
+    stdscr.addstr(2, 14, offsetHeader)
+
+    jsonStr = json.dumps(step, indent=4)
     lines = jsonStr.splitlines()
 
     displayOffsetY = 4
@@ -34,7 +37,7 @@ def displayStep(stdscr, scrollOffset, stepNumber, step):
 
     stdscr.addstr(displayOffsetY, 0, '\n'.join(lines))
 
-def startTraceWindow(jsonTrace):
+def startTraceWindow(steps):
     stdscr = curses.initscr()
     curses.cbreak()
     curses.curs_set(0)
@@ -53,12 +56,12 @@ def startTraceWindow(jsonTrace):
             'up/down/PGUP/PGDOWN to scroll.'
         )
         stdscr.addstr(0, 0, headerStr)
-        displayStep(stdscr, scrollOffset, stepNumber, jsonTrace[stepNumber])
+        displayStep(stdscr, scrollOffset, stepNumber, steps)
 
         key = stdscr.getch()
 
         # Handle changing steps
-        if key == curses.KEY_RIGHT and stepNumber < len(jsonTrace) - 2:
+        if key == curses.KEY_RIGHT and stepNumber < len(steps) - 1:
             stepNumber += 1
         elif key == curses.KEY_LEFT and stepNumber > 0:
             stepNumber -= 1
@@ -87,7 +90,7 @@ if __name__ == '__main__':
         if 'trace' in jsonInput:
             startTraceWindow(jsonInput['trace'])
         else:
-            json.dumps(jsonInput, indent=4, sort_keys=True)
+            json.dumps(jsonInput, indent=4)
     except ValueError as e: # Probably a JSON parse error
         print("Recieved stdin: ")
         print(stdin)
