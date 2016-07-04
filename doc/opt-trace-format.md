@@ -37,5 +37,5 @@ Output
 ------
 - The "code" parameter is omitted.
 - A "file" parameter is output alongside the "line"
-
+- A "last_return_value" parameter may be shown when a non-void function returns.
 

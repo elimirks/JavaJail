@@ -33,7 +33,6 @@ public class JSONTracingThread extends Thread {
     private final VirtualMachine vm;   // Running VM
     private String[] no_breakpoint_requests = {
         "java.*", "javax.*", "sun.*", "com.sun.*",
-        "Stack", "Queue", "ST", // FIXME possibly remove these - legacy
         "jdk.internal.org.objectweb.asm.*" // for creating lambda classes
     };
 
