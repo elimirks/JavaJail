@@ -217,6 +217,11 @@ public class JSONTracingThread extends Thread {
     private void handleLocatableEvent(LocatableEvent event) {
         tryInitVMCommander(event);
 
+        // We ignore these, since they are duplicated by StepEvents
+        if (event instanceof MethodEntryEvent) {
+            return;
+        }
+
         Location loc = event.location();
 
         boolean isExceptionEvent = event instanceof ExceptionEvent &&

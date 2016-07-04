@@ -125,11 +125,7 @@ public class JDI2JSON {
         JsonObjectBuilder result = Json.createObjectBuilder();
         result.add("stdout", stdout.getContents());
 
-        if (e instanceof MethodEntryEvent) {
-            result.add("event", "call");
-            //frame_stack.add(frame_ticker++);
-            addLocationLineAndFileToJson(loc, result);
-        } else if (e instanceof MethodExitEvent) {
+        if (e instanceof MethodExitEvent) {
             returnValue = convertValue(((MethodExitEvent)e).returnValue());
             result.add("event", "return");
             addLocationLineAndFileToJson(loc, result);

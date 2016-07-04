@@ -26,10 +26,8 @@ Installation steps
 Testing
 -------
 
-To test, try this:
-`./run.sh < doc/testfiles/test-input.json`
-If you see a big JSON trace, it works. If you see ugly exceptions, it's broken.
+To see a fancy ncurses trace viewer for testing, run:
+`./test/generateJailInput.py test/Dog.java | ./run.sh | ./test/traceStepper.py`
 
-To see a fancy ncurses trace viewer, run:
-`./test/generateJailInput.py test/Dog.java | ./run.sh | test/traceStepper.py`
+If it breaks, try running it without piping into the traceStepper to debug.
 
