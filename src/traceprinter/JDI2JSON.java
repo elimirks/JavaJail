@@ -133,6 +133,12 @@ public class JDI2JSON {
         JsonObjectBuilder result = Json.createObjectBuilder();
         result.add("stdout", stdout.getContents());
 
+        // Used to keep track of objects passing as return values.
+        if (lastReturnValue != null) {
+            result.add("last_return_value", convertValue(lastReturnValue));
+            lastReturnValue = null;
+        }
+
         if (e instanceof MethodExitEvent) {
             Value value = ((MethodExitEvent)e).returnValue();
             returnValue = convertValue(value);
@@ -153,11 +159,6 @@ public class JDI2JSON {
 
             result.add("event", "exception");
             result.add("exception_msg", exceptionMessage((ExceptionEvent)e));
-        }
-
-        // Used to keep track of objects passing as return values.
-        if (lastReturnValue != null) {
-            result.add("last_return_value", convertValue(lastReturnValue));
         }
 
         result.add("stack_to_render", generateStackFrameJson(
