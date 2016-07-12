@@ -58,7 +58,6 @@ public class JDI2JSON {
     private TreeMap<Long, ObjectReference> heap;
     private TreeSet<Long> heap_done;
 
-    //private ArrayList<Long> frame_stack = new ArrayList<Long>();
     private long frame_ticker = 0;
 
     public List<ReferenceType> staticListable = new ArrayList<>();
@@ -78,7 +77,6 @@ public class JDI2JSON {
             InputStream vm_stderr, JsonObject optionsObject) {
         stdout = new InputPuller(vm_stdout);
         stderr = new InputPuller(vm_stderr);
-        //frame_stack.add(frame_ticker++);
         if (optionsObject.containsKey("showStringsAsValues")) {
             showStringsAsValues =
                 optionsObject.getBoolean("showStringsAsValues");
@@ -168,9 +166,6 @@ public class JDI2JSON {
         result.add("stack_to_render", generateStackFrameJson(
             thread, returnValue));
 
-        //if (e instanceof MethodExitEvent)
-        //  frame_stack.remove(frame_stack.size()-1);
-
         JsonObjectBuilder statics = Json.createObjectBuilder();
         JsonArrayBuilder statics_a = Json.createArrayBuilder();
         for (ReferenceType rt : staticListable) {
@@ -194,7 +189,7 @@ public class JDI2JSON {
         result.add("globals", statics);
         result.add("ordered_globals", statics_a);
 
-        result.add("func_name", loc.method().name());
+        result.add("func_name", getFormattedMethodName(loc.method()));
         result.add("heap", convertHeap());
 
         JsonObject this_ep = result.build();
@@ -214,11 +209,10 @@ public class JDI2JSON {
             ThreadReference thread) {
         Value value = event.returnValue();
 
-        Location loc = event.location();
-        String methodName = loc.method().name();
-        boolean isConstructor = "<init>".equals(methodName);
+        Location location = event.location();
+        Method method = location.method();
 
-        if (isConstructor) {
+        if (method.isConstructor()) {
             try {
                 StackFrame currentFrame = thread.frame(0);
                 return currentFrame.thisObject();
@@ -468,31 +462,37 @@ public class JDI2JSON {
             result.add("__return__", returnValue);
             result_ordered.add("__return__");
         }
+        String methodName = getFormattedMethodName(sf.location().method());
         return Json.createObjectBuilder()
-            .add("func_name", sf.location().method().name()+":"+sf.location().lineNumber())
+            .add("func_name", methodName + ":" + sf.location().lineNumber())
             .add("encoded_locals", result)
             .add("ordered_varnames", result_ordered)
             .add("parent_frame_id_list", Json.createArrayBuilder())
-            .add("is_highlighted", highlight)//frame_stack.size()-1)
+            .add("is_highlighted", highlight)
             .add("is_zombie", false)
             .add("is_parent", false)
-            .add("unique_hash", ""+frame_ticker)//frame_stack.get(level))
-            .add("frame_id", frame_ticker);//frame_stack.get(level));
+            .add("unique_hash", ""+frame_ticker)
+            .add("frame_id", frame_ticker);
     }
 
     // used to show a single non-user frame when there is
     // non-user code running between two user frames
     private JsonObjectBuilder convertFrameStub(StackFrame sf) {
+        Location location = sf.location();
+        String methodName = getFormattedMethodName(location.method());
+        String functionName = String.format("\u22EE\n%s.%s",
+            location.declaringType().name(), methodName);
+
         return Json.createObjectBuilder()
-            .add("func_name", "\u22EE\n"+sf.location().declaringType().name()+"."+sf.location().method().name())
-            .add("encoded_locals", Json.createObjectBuilder())//.add("...", "..."))
-            .add("ordered_varnames", Json.createArrayBuilder())//.add("..."))
+            .add("func_name", functionName)
+            .add("encoded_locals", Json.createObjectBuilder())
+            .add("ordered_varnames", Json.createArrayBuilder())
             .add("parent_frame_id_list", Json.createArrayBuilder())
-            .add("is_highlighted", false)//frame_stack.size()-1)
+            .add("is_highlighted", false)
             .add("is_zombie", false)
             .add("is_parent", false)
-            .add("unique_hash", ""+frame_ticker)//frame_stack.get(level))
-            .add("frame_id", frame_ticker);//frame_stack.get(level));
+            .add("unique_hash", ""+frame_ticker)
+            .add("frame_id", frame_ticker);
     }
 
     JsonObjectBuilder convertHeap() {
@@ -817,6 +817,21 @@ public class JDI2JSON {
      */
     boolean isZeroIntegerValue(Value v) {
         return v instanceof IntegerValue && ((IntegerValue)v).intValue() == 0;
+    }
+
+    /**
+     * Neatly formats the name for the given method.
+     *
+     * @param method The method to grab the name from.
+     */
+    private String getFormattedMethodName(Method method) {
+        // Don't show the method name as "<init>" (which is the default)
+        if (method.isConstructor()) {
+            // Show the class/constructor name
+            ReferenceType type = method.declaringType();
+            return type.name();
+        }
+        return method.name();
     }
 }
 
