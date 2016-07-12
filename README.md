@@ -31,3 +31,10 @@ To see a fancy ncurses trace viewer for testing, run:
 
 If it breaks, try running it without piping into the traceStepper to debug.
 
+Security
+--------
+
+All user code is run with the policy src/user_code.policy. Although this
+restricts many risks, you should always run this project in a sandbox
+such as a VM or Docker.
+
