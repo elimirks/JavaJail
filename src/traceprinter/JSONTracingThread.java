@@ -332,7 +332,7 @@ public class JSONTracingThread extends Thread {
                 return;
         }
 
-        jdi2json.staticListable.add(rt);
+        jdi2json.addPotentiallyStaticReference(rt);
 
         //System.out.println(rt.name());
         try {

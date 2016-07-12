@@ -109,6 +109,10 @@ public class JDI2JSON {
         }
     }
 
+    public void addPotentiallyStaticReference(ReferenceType ref) {
+        staticListable.add(ref);
+    }
+
     // returns null when nothing changed since the last time
     // (or when only event type changed and new value is "step_line")
     public ArrayList<JsonObject> convertExecutionPoint(Event e, Location loc,
@@ -170,7 +174,7 @@ public class JDI2JSON {
         JsonObjectBuilder statics = Json.createObjectBuilder();
         JsonArrayBuilder statics_a = Json.createArrayBuilder();
         for (ReferenceType rt : staticListable) {
-            if (rt.isInitialized() && !in_builtin_package(rt.name())) {
+            if (rt.isPrepared() && !in_builtin_package(rt.name())) {
                 for (Field f : rt.visibleFields()) {
                     if (f.isStatic()) {
                         statics.add(rt.name()+"."+f.name(),
