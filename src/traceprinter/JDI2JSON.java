@@ -60,7 +60,7 @@ public class JDI2JSON {
 
     private long frame_ticker = 0;
 
-    public List<ReferenceType> staticListable = new ArrayList<>();
+    private List<ReferenceType> staticListable = new ArrayList<>();
 
     public ReferenceType stdinRT = null;
 
@@ -300,37 +300,6 @@ public class JDI2JSON {
         }
 
         return true;
-    }
-
-    private JsonObject createReturnEventFrom(Location loc, JsonObject base_ep, JsonValue returned) {
-        try {
-            JsonObjectBuilder result = Json.createObjectBuilder();
-            result.add("event", "return");
-            addLocationLineAndFileToJson(loc, result);
-            for (Map.Entry<String, JsonValue> me : base_ep.entrySet()) {
-                if (me.getKey().equals("event") || me.getKey().equals("line")) {
-                } else if (me.getKey().equals("stack_to_render")) {
-                    JsonArray old_stack_to_render = (JsonArray)me.getValue();
-                    JsonObject old_top_frame = (JsonObject)(old_stack_to_render.get(0));
-                    JsonObject old_top_frame_vars = (JsonObject)(old_top_frame.get("encoded_locals"));
-                    JsonArray old_top_frame_vars_o = (JsonArray)(old_top_frame.get("ordered_varnames"));
-                    result.add("stack_to_render",
-                            jsonModifiedArray(old_stack_to_render, 0,
-                                jsonModifiedObject
-                                (jsonModifiedObject
-                                 (old_top_frame,
-                                  "encoded_locals",
-                                  jsonModifiedObject(old_top_frame_vars, "__return__", returned)),
-                                 "ordered_varnames",
-                                 jsonModifiedArray(old_top_frame_vars_o, -1, jsonString("__return__")))));
-                } else {
-                    result.add(me.getKey(), me.getValue());
-                }
-            }
-            return result.build();
-        } catch (IndexOutOfBoundsException exc) {
-            return base_ep;
-        }
     }
 
     // issue: the frontend uses persistent frame ids but JDI doesn't provide them

@@ -245,6 +245,13 @@ public class JSONTracingThread extends Thread {
         Location loc = event.location();
         ThreadReference thread = event.thread();
 
+        // Ignore static initializer returns (The "<clinit>" frame)
+        if (event instanceof MethodExitEvent) {
+            if (loc.method().isStaticInitializer()) {
+                return;
+            }
+        }
+
         for (JsonObject e : jdi2json.convertExecutionPoint(event, loc, thread)) {
             addExecutionPointToOutput(e);
         }
