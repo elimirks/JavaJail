@@ -161,6 +161,7 @@ public class JDI2JSON {
 
             result.add("event", "exception");
             result.add("exception_msg", exceptionMessage((ExceptionEvent)e));
+            addLocationLineAndFileToJson(loc, result);
         }
 
         result.add("stack_to_render", generateStackFrameJson(
