@@ -23,7 +23,7 @@ public class ByteClassLoader extends ClassLoader {
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         byte[] bytecode = definitions.get(name);
         if (bytecode == null) {
-            throw new ClassNotFoundException(sb.toString());
+            throw new ClassNotFoundException();
         }
         return defineClass(name, bytecode, 0, bytecode.length);
     }
