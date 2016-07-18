@@ -1,9 +1,10 @@
-// Permissions needed to spawn user code.
+// Permissions needed to spawn user code inside JavaJail.
 // This should be super restricted!
 grant {
     permission java.lang.RuntimePermission "setIO";
     permission java.lang.RuntimePermission "modifyThread";
     permission java.lang.RuntimePermission "createClassLoader";
     permission java.lang.RuntimePermission "modifyThreadGroup";
+    permission java.lang.RuntimePermission "accessDeclaredMembers";
 };
 
