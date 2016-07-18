@@ -89,18 +89,19 @@ public class VMCommandee {
             main = target.getDeclaredMethod("main", String[].class);
         } catch (NoSuchMethodException e) {
             throw new CodeStagingException(String.format(
-                "Class '%s' requires a 'public static void main' method.",
+                "Class '%s' requires a method with signature " +
+                    "'public static void main(String[])'.",
                 className));
         }
 
         int mainModifiers = main.getModifiers();
         if ((mainModifiers & Modifier.PUBLIC) != Modifier.PUBLIC) {
             throw new CodeStagingException(String.format(
-                "The main method in '%s' must be public.",
+                "The 'main' method in '%s' must be public.",
                 className));
         } else if ((mainModifiers & Modifier.STATIC) != Modifier.STATIC) {
             throw new CodeStagingException(String.format(
-                "The main method in '%s' must be static.",
+                "The 'main' method in '%s' must be static.",
                 className));
         }
 
