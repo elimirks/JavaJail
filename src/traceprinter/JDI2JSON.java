@@ -167,28 +167,12 @@ public class JDI2JSON {
         result.add("stack_to_render", generateStackFrameJson(
             thread, returnValue));
 
-        JsonObjectBuilder statics = Json.createObjectBuilder();
-        JsonArrayBuilder statics_a = Json.createArrayBuilder();
-        for (ReferenceType rt : staticListable) {
-            if (rt.isPrepared() && !in_builtin_package(rt.name())) {
-                for (Field f : rt.visibleFields()) {
-                    if (f.isStatic()) {
-                        statics.add(rt.name()+"."+f.name(),
-                                convertValue(rt.getValue(f)));
-                        statics_a.add(rt.name()+"."+f.name());
-                    }
-                }
-            }
-        }
         if (stdinRT != null && stdinRT.isInitialized()) {
             int stdinPosition = ((IntegerValue)stdinRT.getValue(stdinRT.fieldByName("position"))).value();
             result.add("stdinPosition", stdinPosition);
-            /*            statics.add("stdin.Position", stdinPosition);
-                          statics_a.add("stdin.Position");*/
         }
 
-        result.add("globals", statics);
-        result.add("ordered_globals", statics_a);
+        addGlobalFieldsToJson(result);
 
         result.add("func_name", getFormattedMethodName(loc.method()));
         result.add("heap", convertHeap());
@@ -199,6 +183,31 @@ public class JDI2JSON {
             last_ep = this_ep;
         }
         return results;
+    }
+
+    /**
+     * Searches for global (static) variables in staticListable.
+     */
+    private void addGlobalFieldsToJson(JsonObjectBuilder json) {
+        JsonObjectBuilder globals = Json.createObjectBuilder();
+        JsonArrayBuilder orderedGlobals = Json.createArrayBuilder();
+
+        for (ReferenceType rt : staticListable) {
+            if (rt.isPrepared() && ! in_builtin_package(rt.name())) {
+                // All the direct class fields - not inherited fields
+                for (Field f : rt.fields()) {
+                    if (f.isStatic()) {
+                        String fieldName = rt.name() + "." + f.name();
+
+                        globals.add(fieldName, convertValue(rt.getValue(f)));
+                        orderedGlobals.add(fieldName);
+                    }
+                }
+            }
+        }
+
+        json.add("globals", globals);
+        json.add("ordered_globals", orderedGlobals);
     }
 
     /**
